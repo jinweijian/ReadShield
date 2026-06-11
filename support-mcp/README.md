@@ -59,7 +59,7 @@ http://127.0.0.1:18080
   - 读取配置 service 的 systemd active 状态。
 - `db.query`
   - 参数：`datasource`、`sql`
-  - 只允许 `SELECT`、`SHOW`、`DESCRIBE`，自动追加 LIMIT。
+  - 只允许 AST 白名单内的 `SELECT ... FROM ...`、`SHOW TABLES/DATABASES/COLUMNS`、`DESCRIBE`，自动追加 LIMIT。
 - `db.explain`
   - 参数：`datasource`、`sql`
   - 对只读 SQL 执行 EXPLAIN。
@@ -75,7 +75,7 @@ http://127.0.0.1:18080
 - SSH 远端命令只由 ReadShield 根据配置生成，动态值统一 shell quote。
 - Docker 日志只允许固定 `docker logs --tail <N> <container>`，容器名来自配置。
 - Docker MySQL 只允许固定 `docker exec <container> mysql ... -e <readonly sql>`，容器名和 mysql 客户端来自配置。
-- SQL 拒绝多语句、写关键字、敏感表和越权 schema。
+- SQL 解析为 AST 后只允许明确支持的只读子集，拒绝多语句、注释、非白名单函数/表达式、敏感表和越权 schema。
 - 输出先脱敏再裁剪，私钥、密码、token、手机号、身份证等不会原样返回。
 - 审计日志只保存参数摘要和脱敏后的返回预览，不保存数据库连接串。
 

@@ -23,6 +23,13 @@ test("rejects writes, multi statements, and forbidden sensitive tables", () => {
   );
 });
 
+test("rejects select statements outside the allowlisted SQL subset", () => {
+  const guard = new SqlGuard();
+
+  assert.throws(() => guard.assertReadonlySql("select sleep(10)"), /not allowlisted/);
+  assert.throws(() => guard.assertReadonlySql("select id from users union select id from orders"), /not allowlisted/);
+});
+
 test("restricts configured schemas when SQL references schema qualified tables", () => {
   const guard = new SqlGuard();
 
