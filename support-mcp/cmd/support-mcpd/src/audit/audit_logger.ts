@@ -1,15 +1,32 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+
+export type AuditEvent = {
+  id: string;
+  at: string;
+  tool: string;
+  status: "ok" | "error";
+  args: unknown;
+  elapsedMs: number;
+  sizeBytes?: number;
+  responsePreview?: string;
+  error?: string;
+};
 
 export class AuditLogger {
   constructor(private file: string) {}
 
-  write(obj: Record<string, unknown>) {
+  nextId() {
+    return crypto.randomUUID();
+  }
+
+  write(event: AuditEvent) {
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.appendFileSync(this.file, JSON.stringify(obj) + "\n", "utf8");
-    } catch {
-      // 审计失败不影响主流程，但应该在后续接入告警
+      fs.appendFileSync(this.file, `${JSON.stringify(event)}\n`, "utf8");
+    } catch (err) {
+      process.stderr.write(`support-mcp audit write failed: ${(err as Error).message}\n`);
     }
   }
 }

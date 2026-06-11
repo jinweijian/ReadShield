@@ -3,6 +3,11 @@ server:
   profile: prod
   audit_log: /var/log/support-mcp/audit.log
 
+audit_admin:
+  host: 127.0.0.1
+  port: 18080
+  max_entries: 500
+
 security:
   require_login: true
   token_ttl_minutes: 480
@@ -15,6 +20,26 @@ limits:
   command_timeout_sec: 5
   logs_tail_max_lines: 1000
   logs_search_max_matches: 200
+  db_max_rows: 500
+  db_query_timeout_sec: 5
+
+commands:
+  tail:
+    bin: /usr/bin/tail
+  grep:
+    bin: /usr/bin/grep
+  systemctl:
+    bin: /usr/bin/systemctl
+  ssh:
+    bin: /usr/bin/ssh
+  docker:
+    bin: /usr/bin/docker
+
+hosts:
+  test_server:
+    type: ssh
+    destination: root@101.200.48.214
+    options: [-o, BatchMode=yes, -o, ConnectTimeout=10]
 
 targets:
   nginx_error:
@@ -23,14 +48,63 @@ targets:
   nginx_access:
     path: /var/log/support-mcp/nginx/access.log
     allowed_tools: [logs.tail, logs.search]
-  php_prod:
-    path: /var/log/support-mcp/php/prod.log
+  app_prod:
+    path: /var/log/support-mcp/app/prod.log
+    allowed_tools: [logs.tail, logs.search]
+  remote_nginx_access:
+    type: file
+    host: test_server
+    path: /var/log/nginx/access.log
+    allowed_tools: [logs.tail, logs.search]
+  remote_nginx_error:
+    type: file
+    host: test_server
+    path: /var/log/nginx/error.log
+    allowed_tools: [logs.tail, logs.search]
+  remote_app_api:
+    type: docker-logs
+    host: test_server
+    container: stallmart-api
+    tail_lines: 1000
     allowed_tools: [logs.tail, logs.search]
 
 services:
   nginx:
     unit: nginx.service
-  php-fpm:
-    unit: php8.1-fpm.service
   mysql:
     unit: mysql.service
+
+databases:
+  edu_prod:
+    type: mysql
+    dsn_env: SUPPORT_MCP_DB_EDU_PROD_DSN
+    readonly: true
+    max_rows: 500
+    timeout_sec: 5
+    allowed_schemas: [edu]
+    forbidden_tables: [user_password, access_token, oauth_token]
+  docker_edu_prod:
+    type: docker-mysql
+    container: edu-mysql
+    mysql_bin: mysql
+    user_env: SUPPORT_MCP_DOCKER_MYSQL_USER
+    password_env: SUPPORT_MCP_DOCKER_MYSQL_PASSWORD
+    database: edu
+    readonly: true
+    max_rows: 500
+    timeout_sec: 5
+    allowed_schemas: [edu]
+    forbidden_tables: [user_password, access_token, oauth_token]
+  remote_docker_mysql:
+    type: docker-mysql
+    host: test_server
+    container: stallmart-mysql
+    docker_bin: /usr/bin/docker
+    mysql_bin: mysql
+    user_env: SUPPORT_MCP_REMOTE_DOCKER_MYSQL_USER
+    password_env: SUPPORT_MCP_REMOTE_DOCKER_MYSQL_PASSWORD
+    database: stallmart
+    readonly: true
+    max_rows: 500
+    timeout_sec: 5
+    forbidden_tables: [user_password, access_token, oauth_token]
